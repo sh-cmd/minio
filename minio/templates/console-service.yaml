@@ -1,0 +1,38 @@
+{{ $scheme := "http" }}
+{{- if .Values.tls.enabled }}
+{{ $scheme = "https" }}
+{{ end }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ template "minio.fullname" . }}-console
+  namespace: {{ .Release.Namespace | quote }}
+  labels:
+    app: {{ template "minio.name" . }}
+    chart: {{ template "minio.chart" . }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+{{- if .Values.consoleService.annotations }}
+  annotations:
+{{ toYaml .Values.consoleService.annotations | indent 4 }}
+{{- end }}
+spec:
+  type: LoadBalancer
+  ports:
+    - name: {{ $scheme }}
+      port: {{ .Values.consoleService.port }}
+      protocol: TCP
+{{- if (and (eq .Values.consoleService.type "NodePort") ( .Values.consoleService.nodePort)) }}
+      nodePort: {{ .Values.consoleService.nodePort }}
+{{- else }}
+      targetPort: {{ .Values.minioConsolePort }}
+{{- end}}
+{{- if .Values.consoleService.externalIPs }}
+  externalIPs:
+{{- range $i , $ip := .Values.consoleService.externalIPs }}
+  - {{ $ip }}
+{{- end }}
+{{- end }}
+  selector:
+    app: {{ template "minio.name" . }}
+    release: {{ .Release.Name }}
